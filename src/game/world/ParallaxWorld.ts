@@ -16,7 +16,7 @@ import {
     VISTA_PARALLAX
 } from '../config';
 import { animateTraveler } from './travelerAnimation';
-import { createForestLayers, type ForestLayer, updateForestLayers } from './forest';
+import { createForestLayers, type StreamingForestLayer, updateForestLayers } from './forest';
 import { createParallaxTextures } from './textures';
 
 export class ParallaxWorld
@@ -24,7 +24,7 @@ export class ParallaxWorld
     private vista: GameObjects.TileSprite;
     private roadLayer: GameObjects.TileSprite;
     private traveler: GameObjects.Image;
-    private forestLayers: ForestLayer[] = [];
+    private forestLayers: StreamingForestLayer[] = [];
 
     constructor (scene: Scene, initialWorldOffset: number)
     {

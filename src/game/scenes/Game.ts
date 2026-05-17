@@ -12,6 +12,46 @@ import {
 
 const GAME_WIDTH = 1024;
 const GAME_HEIGHT = 768;
+// 道路
+const ROAD_Y = 660;
+const ROAD_HEIGHT = 40;
+
+// 旅人
+const TRAVELER_X = 296;
+const TRAVELER_Y = 720;
+const TRAVELER_SCALE = 0.22;
+const TRAVELER_SHADOW_X = 292;
+const TRAVELER_SHADOW_Y = 660;
+const TRAVELER_SHADOW_WIDTH = 132;
+const TRAVELER_SHADOW_HEIGHT = 16;
+
+// 视差
+const VISTA_PARALLAX = 0.16;
+const ROAD_PARALLAX = 0.86;
+
+// 旅人动画
+const TRAVELER_BOB_PERIOD_FAST = 115;
+const TRAVELER_BOB_PERIOD_SLOW = 900;
+const TRAVELER_BOB_AMP_TRAVEL = 4;
+const TRAVELER_BOB_AMP_IDLE = 1.4;
+const TRAVELER_ROT_PERIOD_FAST = 170;
+const TRAVELER_ROT_PERIOD_SLOW = 1200;
+const TRAVELER_ROT_AMP_TRAVEL = 0.012;
+const TRAVELER_ROT_AMP_IDLE = 0.004;
+
+// 旅行
+const TRAVEL_BASE_DURATION = 2200;
+const TRAVEL_DISTANCE_FACTOR = 0.45;
+
+// UI
+const VIGNETTE_ALPHA = 0.18;
+const ROUTE_BUTTON_Y = 708;
+const EVENT_CARD_Y = 382;
+const EVENT_CHOICE_BASE_Y = 410;
+const EVENT_CHOICE_SPACING = 72;
+const EVENT_FADE_DURATION = 160;
+const ARRIVAL_EVENT_DELAY = 220;
+
 const UI_FONT = 'Microsoft YaHei, SimHei, Arial';
 const FOREST_RANDOM_SEED = 83721;
 const FOREST_SPRITE_ALPHA = 1;
@@ -97,11 +137,11 @@ const FOREST_LAYER_SPECS: ForestLayerSpec[] = [
         xStart: 0,
         xSpacing: 180,
         xJitter: 18,
-        yBase: 649,
+        yBase: 700,
         yJitter: 21,
         scaleBase: 0.8,
         scaleJitter: 0.05,
-        depth: 3.15,
+        depth: 4.0,
         tints: [0xb2c4dc, 0x9eb1ca, 0xa7bad2, 0xa0b5cc, 0x91a5bd, 0xa8b9cf, 0xb0c1d8, 0x9badc4, 0xa1b4cc, 0x94a8c0],
         flipIndexes: [2, 3, 6, 7]
     },
@@ -113,11 +153,11 @@ const FOREST_LAYER_SPECS: ForestLayerSpec[] = [
         xStart: 40,
         xSpacing: 210,
         xJitter: 16,
-        yBase: 680,
+        yBase: 700,
         yJitter: 10,
         scaleBase: 0.24,
         scaleJitter: 0.02,
-        depth: 3.45,
+        depth: 4.3,
         tints: [0x94a7bc, 0x8498ae, 0x9badc2, 0x889cb2, 0x90a4bb, 0x8195ac, 0x8fa3b9, 0x879bb1],
         flipIndexes: [1, 2, 5, 6]
     },
@@ -133,7 +173,7 @@ const FOREST_LAYER_SPECS: ForestLayerSpec[] = [
         yJitter: 12,
         scaleBase: 0.30,
         scaleJitter: 0.1,
-        depth: 5.15,
+        depth: 6.5,
         tints: [0x061018],
         flipIndexes: [1, 2, 5, 6],
         tintMode: TintModes.FILL,
@@ -226,21 +266,21 @@ export class Game extends Scene
         this.vista.setTileScale(0.86, 0.86);
         this.vista.tilePositionY = 38;
 
-        this.add.rectangle(512, 384, GAME_WIDTH, GAME_HEIGHT, 0x07111c, 0.18).setDepth(1);
+        this.add.rectangle(512, 384, GAME_WIDTH, GAME_HEIGHT, 0x07111c, VIGNETTE_ALPHA).setDepth(1);
 
         this.createForestLayers();
 
-        this.roadLayer = this.add.tileSprite(512, 660, GAME_WIDTH, 40, 'road-strip');
-        this.roadLayer.setDepth(4);
+        this.roadLayer = this.add.tileSprite(512, ROAD_Y, GAME_WIDTH, ROAD_HEIGHT, 'road-strip');
+        this.roadLayer.setDepth(3.5);
 
-        this.add.ellipse(292, 660, 132, 16, 0x020407, 0.46).setDepth(5);
+        this.add.ellipse(TRAVELER_SHADOW_X, TRAVELER_SHADOW_Y, TRAVELER_SHADOW_WIDTH, TRAVELER_SHADOW_HEIGHT, 0x020407, 0.46).setDepth(3.8);
 
-        this.traveler = this.add.image(296, 670, 'traveler');
+        this.traveler = this.add.image(TRAVELER_X, TRAVELER_Y, 'traveler');
         this.traveler.setOrigin(0.5, 1);
-        this.traveler.setScale(0.22);
-        this.traveler.setDepth(6);
+        this.traveler.setScale(TRAVELER_SCALE);
+        this.traveler.setDepth(5.5);
 
-        this.add.rectangle(512, (660 + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - 660, 0x000000, 1).setDepth(3.95);
+        this.add.rectangle(512, (ROAD_Y + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - ROAD_Y, 0x000000, 1).setDepth(3.0);
     }
 
     private createHud ()
@@ -329,7 +369,7 @@ export class Game extends Scene
             const target = LOCATIONS[route.target];
             const visitedText = this.state.visited.has(route.target) ? '已走过的路' : '未抵达';
             const x = baseX + (index * spacing);
-            const container = this.add.container(x, 708);
+            const container = this.add.container(x, ROUTE_BUTTON_Y);
             const panel = this.add.rectangle(0, 0, 258, 62, 0x122333, 0.94);
             const label = this.add.text(0, -12, target.name, {
                 fontFamily: UI_FONT,
@@ -374,7 +414,7 @@ export class Game extends Scene
         this.pendingRoute = route;
         this.isTraveling = true;
         this.travelElapsed = 0;
-        this.travelDuration = 2200 + Math.round(route.distance * 0.45);
+        this.travelDuration = TRAVEL_BASE_DURATION + Math.round(route.distance * TRAVEL_DISTANCE_FACTOR);
         this.travelStartOffset = this.worldOffset;
         this.travelDistance = route.distance;
 
@@ -402,7 +442,7 @@ export class Game extends Scene
 
         this.renderLocation(`抵达「${location.name}」。`);
 
-        this.time.delayedCall(220, () => {
+        this.time.delayedCall(ARRIVAL_EVENT_DELAY, () => {
             this.showArrivalEvent(location.eventId);
         });
     }
@@ -424,7 +464,7 @@ export class Game extends Scene
     {
         const container = this.add.container(0, 0);
         const overlay = this.add.rectangle(512, 384, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.62);
-        const card = this.add.rectangle(512, 382, 650, 382, 0x0b1620, 0.96);
+        const card = this.add.rectangle(512, EVENT_CARD_Y, 650, 382, 0x0b1620, 0.96);
         const title = this.add.text(512, 235, event.title, {
             fontFamily: UI_FONT,
             fontSize: 30,
@@ -444,7 +484,7 @@ export class Game extends Scene
         container.add([overlay, card, title, body]);
 
         event.choices.forEach((choice, index) => {
-            const y = 410 + (index * 72);
+            const y = EVENT_CHOICE_BASE_Y + (index * EVENT_CHOICE_SPACING);
             const button = this.add.rectangle(512, y, 500, 54, 0x162a3a, 0.96);
             const label = this.add.text(512, y, choice.label, {
                 fontFamily: UI_FONT,
@@ -472,7 +512,7 @@ export class Game extends Scene
         this.tweens.add({
             targets: container,
             alpha: 1,
-            duration: 160,
+            duration: EVENT_FADE_DURATION,
             ease: 'Sine.easeOut'
         });
     }
@@ -637,17 +677,17 @@ export class Game extends Scene
 
     private applyParallax ()
     {
-        this.vista.tilePositionX = this.worldOffset * 0.16;
-        this.roadLayer.tilePositionX = this.worldOffset * 0.86;
+        this.vista.tilePositionX = this.worldOffset * VISTA_PARALLAX;
+        this.roadLayer.tilePositionX = this.worldOffset * ROAD_PARALLAX;
         this.updateForestLayers();
     }
 
     private animateTraveler (time: number)
     {
-        const step = this.isTraveling ? Math.sin(time / 115) : Math.sin(time / 900);
+        const step = this.isTraveling ? Math.sin(time / TRAVELER_BOB_PERIOD_FAST) : Math.sin(time / TRAVELER_BOB_PERIOD_SLOW);
 
-        this.traveler.y = 670 + (this.isTraveling ? step * 4 : step * 1.4);
-        this.traveler.rotation = this.isTraveling ? Math.sin(time / 170) * 0.012 : Math.sin(time / 1200) * 0.004;
+        this.traveler.y = TRAVELER_Y + (this.isTraveling ? step * TRAVELER_BOB_AMP_TRAVEL : step * TRAVELER_BOB_AMP_IDLE);
+        this.traveler.rotation = this.isTraveling ? Math.sin(time / TRAVELER_ROT_PERIOD_FAST) * TRAVELER_ROT_AMP_TRAVEL : Math.sin(time / TRAVELER_ROT_PERIOD_SLOW) * TRAVELER_ROT_AMP_IDLE;
     }
 
     private getMoodLabel ()
@@ -677,9 +717,9 @@ export class Game extends Scene
 
     private createParallaxTextures ()
     {
-        this.createTexture('road-strip', 1024, 40, (graphics) => {
+        this.createTexture('road-strip', 1024, ROAD_HEIGHT, (graphics) => {
             graphics.fillStyle(0x111821, 0.96);
-            graphics.fillRect(0, 0, 1024, 40);
+            graphics.fillRect(0, 0, 1024, ROAD_HEIGHT);
 
             graphics.fillStyle(0x25313b, 0.78);
             graphics.fillRect(0, 8, 1024, 16);

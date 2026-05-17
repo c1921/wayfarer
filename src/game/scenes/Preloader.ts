@@ -27,6 +27,12 @@ export class Preloader extends Scene
         this.load.setPath('assets/wayfarer');
 
         this.load.image('traveler', 'traveler.png');
+        this.load.image('forest-far-pines-a', 'forest/forest-far-pines-a.png');
+        this.load.image('forest-far-pines-b', 'forest/forest-far-pines-b.png');
+        this.load.image('forest-mid-pine-a', 'forest/forest-mid-pine-a.png');
+        this.load.image('forest-mid-pine-b', 'forest/forest-mid-pine-b.png');
+        this.load.image('forest-bush-a', 'forest/forest-bush-a.png');
+        this.load.image('forest-bush-b', 'forest/forest-bush-b.png');
     }
 
     create ()

@@ -24,11 +24,34 @@ interface JourneyState
     resolvedEvents: Set<string>;
 }
 
+interface ForestPlacementConfig
+{
+    key: string;
+    baseX: number;
+    y: number;
+    scale: number;
+    alpha: number;
+    depth: number;
+    flipX?: boolean;
+    tint?: number;
+}
+
+interface ForestSprite extends ForestPlacementConfig
+{
+    image: GameObjects.Image;
+}
+
+interface ForestLayer
+{
+    parallax: number;
+    span: number;
+    sprites: ForestSprite[];
+}
+
 export class Game extends Scene
 {
     private vista: GameObjects.TileSprite;
     private farLayer: GameObjects.TileSprite;
-    private midLayer: GameObjects.TileSprite;
     private roadLayer: GameObjects.TileSprite;
     private traveler: GameObjects.Image;
     private locationText: GameObjects.Text;
@@ -36,6 +59,7 @@ export class Game extends Scene
     private descriptionText: GameObjects.Text;
     private statsText: GameObjects.Text;
     private logText: GameObjects.Text;
+    private forestLayers: ForestLayer[] = [];
     private routeButtons: GameObjects.Container[] = [];
     private eventPanel: GameObjects.Container | null = null;
     private pendingRoute: Route | null = null;
@@ -116,9 +140,7 @@ export class Game extends Scene
         this.farLayer.setAlpha(0.6);
         this.farLayer.setDepth(2);
 
-        this.midLayer = this.add.tileSprite(512, 468, GAME_WIDTH, 380, 'tree-line');
-        this.midLayer.setAlpha(0.78);
-        this.midLayer.setDepth(3);
+        this.createForestLayers();
 
         this.roadLayer = this.add.tileSprite(512, 668, GAME_WIDTH, 220, 'road-strip');
         this.roadLayer.setDepth(4);
@@ -411,12 +433,86 @@ export class Game extends Scene
         this.routeButtons = [];
     }
 
+    private createForestLayers ()
+    {
+        this.forestLayers = [
+            this.createForestLayer(0.2, 1680, [
+                { key: 'forest-far-pines-a', baseX: 90, y: 590, scale: 0.24, alpha: 0.46, depth: 2.6, tint: 0x91a4bd },
+                { key: 'forest-far-pines-b', baseX: 690, y: 594, scale: 0.23, alpha: 0.42, depth: 2.6, tint: 0x8096ae },
+                { key: 'forest-far-pines-a', baseX: 1240, y: 588, scale: 0.2, alpha: 0.38, depth: 2.6, flipX: true, tint: 0x7c8fa5 }
+            ]),
+            this.createForestLayer(0.5, 1820, [
+                { key: 'forest-mid-pine-a', baseX: -80, y: 675, scale: 0.27, alpha: 0.82, depth: 3.15, tint: 0xb2c4dc },
+                { key: 'forest-mid-pine-b', baseX: 250, y: 672, scale: 0.24, alpha: 0.72, depth: 3.1, tint: 0x9eb1ca },
+                { key: 'forest-mid-pine-a', baseX: 620, y: 682, scale: 0.31, alpha: 0.78, depth: 3.2, flipX: true, tint: 0xa7bad2 },
+                { key: 'forest-mid-pine-b', baseX: 990, y: 674, scale: 0.27, alpha: 0.76, depth: 3.15, flipX: true, tint: 0xa0b5cc },
+                { key: 'forest-mid-pine-a', baseX: 1370, y: 678, scale: 0.25, alpha: 0.7, depth: 3.1, tint: 0x91a5bd }
+            ]),
+            this.createForestLayer(0.76, 1580, [
+                { key: 'forest-bush-a', baseX: -30, y: 724, scale: 0.17, alpha: 0.9, depth: 5.15, tint: 0xb6c7d9 },
+                { key: 'forest-bush-b', baseX: 360, y: 726, scale: 0.16, alpha: 0.86, depth: 5.15, flipX: true, tint: 0xaec1d4 },
+                { key: 'forest-bush-a', baseX: 780, y: 724, scale: 0.15, alpha: 0.82, depth: 5.15, flipX: true, tint: 0x9fb4c9 },
+                { key: 'forest-bush-b', baseX: 1170, y: 726, scale: 0.15, alpha: 0.82, depth: 5.15, tint: 0x9db1c6 }
+            ])
+        ];
+
+        this.updateForestLayers();
+    }
+
+    private createForestLayer (
+        parallax: number,
+        span: number,
+        configs: ForestPlacementConfig[]
+    ): ForestLayer
+    {
+        const sprites = configs.map((config) => {
+            const image = this.add.image(config.baseX, config.y, config.key);
+
+            image.setOrigin(0.5, 1);
+            image.setScale(config.scale);
+            image.setAlpha(config.alpha);
+            image.setDepth(config.depth);
+
+            if (config.flipX)
+            {
+                image.setFlipX(true);
+            }
+
+            if (config.tint)
+            {
+                image.setTint(config.tint);
+            }
+
+            return { ...config, image };
+        });
+
+        return { parallax, span, sprites };
+    }
+
+    private updateForestLayers ()
+    {
+        this.forestLayers.forEach((layer) => {
+            layer.sprites.forEach((sprite) => {
+                const rawX = sprite.baseX - (this.worldOffset * layer.parallax);
+
+                sprite.image.x = this.wrapForestX(rawX, layer.span, 520);
+            });
+        });
+    }
+
+    private wrapForestX (x: number, span: number, buffer: number)
+    {
+        const wrapped = ((((x + buffer) % span) + span) % span) - buffer;
+
+        return wrapped;
+    }
+
     private applyParallax ()
     {
         this.vista.tilePositionX = this.worldOffset * 0.16;
         this.farLayer.tilePositionX = this.worldOffset * 0.28;
-        this.midLayer.tilePositionX = this.worldOffset * 0.54;
         this.roadLayer.tilePositionX = this.worldOffset * 0.86;
+        this.updateForestLayers();
     }
 
     private animateTraveler (time: number)
@@ -469,22 +565,6 @@ export class Game extends Scene
             graphics.fillTriangle(720, 266, 920, 142, 1140, 266);
         });
 
-        this.createTexture('tree-line', 1024, 380, (graphics) => {
-            graphics.fillStyle(0x07111c, 0.24);
-            graphics.fillRect(0, 294, 1024, 86);
-
-            const trees = [
-                [24, 154], [76, 218], [138, 170], [202, 238], [268, 160],
-                [332, 214], [388, 178], [460, 248], [534, 158], [604, 220],
-                [674, 184], [742, 236], [824, 166], [894, 218], [978, 188]
-            ];
-
-            trees.forEach(([x, height], index) => {
-                const alpha = index % 3 === 0 ? 0.86 : 0.72;
-                this.drawPine(graphics, x, 322, height, 0x07131e, alpha);
-            });
-        });
-
         this.createTexture('road-strip', 1024, 220, (graphics) => {
             graphics.fillStyle(0x111821, 0.96);
             graphics.fillRect(0, 0, 1024, 220);
@@ -529,26 +609,5 @@ export class Game extends Scene
         draw(graphics);
         graphics.generateTexture(key, width, height);
         graphics.destroy();
-    }
-
-    private drawPine (
-        graphics: GameObjects.Graphics,
-        x: number,
-        baseY: number,
-        height: number,
-        color: number,
-        alpha: number
-    )
-    {
-        const trunkWidth = Math.max(4, height * 0.045);
-        const crownWidth = height * 0.34;
-
-        graphics.fillStyle(0x0b0d10, alpha);
-        graphics.fillRect(x - (trunkWidth / 2), baseY - (height * 0.38), trunkWidth, height * 0.38);
-
-        graphics.fillStyle(color, alpha);
-        graphics.fillTriangle(x, baseY - height, x - crownWidth * 0.72, baseY - height * 0.58, x + crownWidth * 0.72, baseY - height * 0.58);
-        graphics.fillTriangle(x, baseY - height * 0.78, x - crownWidth * 0.9, baseY - height * 0.34, x + crownWidth * 0.9, baseY - height * 0.34);
-        graphics.fillTriangle(x, baseY - height * 0.58, x - crownWidth, baseY - height * 0.12, x + crownWidth, baseY - height * 0.12);
     }
 }

@@ -25,8 +25,8 @@ export const TRAVELER_ROT_PERIOD_SLOW = 1200;
 export const TRAVELER_ROT_AMP_TRAVEL = 0.012;
 export const TRAVELER_ROT_AMP_IDLE = 0.004;
 
-export const TRAVEL_BASE_DURATION = 2200;
-export const TRAVEL_DISTANCE_FACTOR = 0.45;
+export const TRAVEL_BASE_DURATION = 0;
+export const TRAVEL_DISTANCE_FACTOR = 1.064;
 export const ARRIVAL_EVENT_DELAY = 220;
 
 export const VIGNETTE_ALPHA = 0.18;

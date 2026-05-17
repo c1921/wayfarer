@@ -21,7 +21,7 @@ import { GameHud } from '../ui/Hud';
 import { EventCardOverlay } from '../ui/EventCardOverlay';
 import { RouteButtons } from '../ui/RouteButtons';
 import { ParallaxWorld } from '../world/ParallaxWorld';
-import { easeInOutSine } from '../world/travelerAnimation';
+
 
 export class Game extends Scene
 {
@@ -65,9 +65,8 @@ export class Game extends Scene
             this.travelElapsed += delta;
 
             const progress = Math.min(this.travelElapsed / this.travelDuration, 1);
-            const eased = easeInOutSine(progress);
 
-            this.worldOffset = this.travelStartOffset + (this.travelDistance * eased);
+            this.worldOffset = this.travelStartOffset + (this.travelDistance * progress);
 
             if (progress >= 1)
             {

@@ -1,4 +1,4 @@
-import { GameObjects, Scene } from 'phaser';
+import { GameObjects, Scene, TintModes } from 'phaser';
 import {
     EVENTS,
     LOCATIONS,
@@ -13,6 +13,8 @@ import {
 const GAME_WIDTH = 1024;
 const GAME_HEIGHT = 768;
 const UI_FONT = 'Microsoft YaHei, SimHei, Arial';
+const FOREST_RANDOM_SEED = 83721;
+const FOREST_SPRITE_ALPHA = 1;
 
 interface JourneyState
 {
@@ -34,6 +36,8 @@ interface ForestPlacementConfig
     depth: number;
     flipX?: boolean;
     tint?: number;
+    tintMode?: number;
+    blur?: boolean;
 }
 
 interface ForestSprite extends ForestPlacementConfig
@@ -48,10 +52,98 @@ interface ForestLayer
     sprites: ForestSprite[];
 }
 
+interface ForestLayerSpec
+{
+    parallax: number;
+    span: number;
+    count: number;
+    keys: string[];
+    xStart: number;
+    xSpacing: number;
+    xJitter: number;
+    yBase: number;
+    yJitter: number;
+    scaleBase: number;
+    scaleJitter: number;
+    depth: number;
+    tints?: number[];
+    flipIndexes?: number[];
+    tintMode?: number;
+    blur?: boolean;
+}
+
+const FOREST_LAYER_SPECS: ForestLayerSpec[] = [
+    {
+        parallax: 0.2,
+        span: 1680,
+        count: 7,
+        keys: ['forest-far-pines-a', 'forest-far-pines-b'],
+        xStart: 0,
+        xSpacing: 240,
+        xJitter: 22,
+        yBase: 666,
+        yJitter: 12,
+        scaleBase: 0.38,
+        scaleJitter: 0.04,
+        depth: 2.6,
+        tints: [0x91a4bd, 0x8096ae, 0x7c8fa5, 0x879bb2, 0x8296ad, 0x788ca3, 0x8da1b8],
+        flipIndexes: [2, 3, 6]
+    },
+    {
+        parallax: 0.5,
+        span: 1820,
+        count: 10,
+        keys: ['forest-mid-pine-a', 'forest-mid-pine-b'],
+        xStart: 0,
+        xSpacing: 180,
+        xJitter: 18,
+        yBase: 649,
+        yJitter: 21,
+        scaleBase: 0.8,
+        scaleJitter: 0.05,
+        depth: 3.15,
+        tints: [0xb2c4dc, 0x9eb1ca, 0xa7bad2, 0xa0b5cc, 0x91a5bd, 0xa8b9cf, 0xb0c1d8, 0x9badc4, 0xa1b4cc, 0x94a8c0],
+        flipIndexes: [2, 3, 6, 7]
+    },
+    {
+        parallax: 0.56,
+        span: 1640,
+        count: 8,
+        keys: ['forest-bush-a', 'forest-bush-b'],
+        xStart: 40,
+        xSpacing: 210,
+        xJitter: 16,
+        yBase: 680,
+        yJitter: 10,
+        scaleBase: 0.24,
+        scaleJitter: 0.02,
+        depth: 3.45,
+        tints: [0x94a7bc, 0x8498ae, 0x9badc2, 0x889cb2, 0x90a4bb, 0x8195ac, 0x8fa3b9, 0x879bb1],
+        flipIndexes: [1, 2, 5, 6]
+    },
+    {
+        parallax: 0.76,
+        span: 1580,
+        count: 9,
+        keys: ['forest-bush-a', 'forest-bush-b'],
+        xStart: 0,
+        xSpacing: 175,
+        xJitter: 14,
+        yBase: 774,
+        yJitter: 12,
+        scaleBase: 0.30,
+        scaleJitter: 0.1,
+        depth: 5.15,
+        tints: [0x061018],
+        flipIndexes: [1, 2, 5, 6],
+        tintMode: TintModes.FILL,
+        blur: true
+    }
+];
+
 export class Game extends Scene
 {
     private vista: GameObjects.TileSprite;
-    private farLayer: GameObjects.TileSprite;
     private roadLayer: GameObjects.TileSprite;
     private traveler: GameObjects.Image;
     private locationText: GameObjects.Text;
@@ -136,23 +228,19 @@ export class Game extends Scene
 
         this.add.rectangle(512, 384, GAME_WIDTH, GAME_HEIGHT, 0x07111c, 0.18).setDepth(1);
 
-        this.farLayer = this.add.tileSprite(512, 355, GAME_WIDTH, 330, 'far-mountains');
-        this.farLayer.setAlpha(0.6);
-        this.farLayer.setDepth(2);
-
         this.createForestLayers();
 
-        this.roadLayer = this.add.tileSprite(512, 668, GAME_WIDTH, 220, 'road-strip');
+        this.roadLayer = this.add.tileSprite(512, 660, GAME_WIDTH, 40, 'road-strip');
         this.roadLayer.setDepth(4);
 
-        this.add.ellipse(292, 674, 178, 26, 0x020407, 0.42).setDepth(5);
+        this.add.ellipse(292, 660, 132, 16, 0x020407, 0.46).setDepth(5);
 
         this.traveler = this.add.image(296, 670, 'traveler');
         this.traveler.setOrigin(0.5, 1);
         this.traveler.setScale(0.22);
         this.traveler.setDepth(6);
 
-        this.add.rectangle(512, 720, GAME_WIDTH, 96, 0x02060a, 0.3).setDepth(4.5);
+        this.add.rectangle(512, (660 + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - 660, 0x000000, 1).setDepth(3.95);
     }
 
     private createHud ()
@@ -435,28 +523,57 @@ export class Game extends Scene
 
     private createForestLayers ()
     {
-        this.forestLayers = [
-            this.createForestLayer(0.2, 1680, [
-                { key: 'forest-far-pines-a', baseX: 90, y: 590, scale: 0.24, alpha: 0.46, depth: 2.6, tint: 0x91a4bd },
-                { key: 'forest-far-pines-b', baseX: 690, y: 594, scale: 0.23, alpha: 0.42, depth: 2.6, tint: 0x8096ae },
-                { key: 'forest-far-pines-a', baseX: 1240, y: 588, scale: 0.2, alpha: 0.38, depth: 2.6, flipX: true, tint: 0x7c8fa5 }
-            ]),
-            this.createForestLayer(0.5, 1820, [
-                { key: 'forest-mid-pine-a', baseX: -80, y: 675, scale: 0.27, alpha: 0.82, depth: 3.15, tint: 0xb2c4dc },
-                { key: 'forest-mid-pine-b', baseX: 250, y: 672, scale: 0.24, alpha: 0.72, depth: 3.1, tint: 0x9eb1ca },
-                { key: 'forest-mid-pine-a', baseX: 620, y: 682, scale: 0.31, alpha: 0.78, depth: 3.2, flipX: true, tint: 0xa7bad2 },
-                { key: 'forest-mid-pine-b', baseX: 990, y: 674, scale: 0.27, alpha: 0.76, depth: 3.15, flipX: true, tint: 0xa0b5cc },
-                { key: 'forest-mid-pine-a', baseX: 1370, y: 678, scale: 0.25, alpha: 0.7, depth: 3.1, tint: 0x91a5bd }
-            ]),
-            this.createForestLayer(0.76, 1580, [
-                { key: 'forest-bush-a', baseX: -30, y: 724, scale: 0.17, alpha: 0.9, depth: 5.15, tint: 0xb6c7d9 },
-                { key: 'forest-bush-b', baseX: 360, y: 726, scale: 0.16, alpha: 0.86, depth: 5.15, flipX: true, tint: 0xaec1d4 },
-                { key: 'forest-bush-a', baseX: 780, y: 724, scale: 0.15, alpha: 0.82, depth: 5.15, flipX: true, tint: 0x9fb4c9 },
-                { key: 'forest-bush-b', baseX: 1170, y: 726, scale: 0.15, alpha: 0.82, depth: 5.15, tint: 0x9db1c6 }
-            ])
-        ];
+        this.forestLayers = FOREST_LAYER_SPECS.map((spec, layerIndex) => {
+            return this.createForestLayer(spec.parallax, spec.span, this.buildForestConfigs(spec, layerIndex));
+        });
 
         this.updateForestLayers();
+    }
+
+    private buildForestConfigs (spec: ForestLayerSpec, layerIndex: number): ForestPlacementConfig[]
+    {
+        const flipIndexes = new Set(spec.flipIndexes ?? []);
+
+        return Array.from({ length: spec.count }, (_, index) => {
+            return {
+                key: spec.keys[index % spec.keys.length],
+                baseX: Math.round(spec.xStart + (index * spec.xSpacing) + this.getForestJitter(spec.xJitter, layerIndex, index, 1)),
+                y: Math.round(spec.yBase + this.getForestJitter(spec.yJitter, layerIndex, index, 2)),
+                scale: this.roundForestScale(spec.scaleBase + this.getForestJitter(spec.scaleJitter, layerIndex, index, 3)),
+                alpha: FOREST_SPRITE_ALPHA,
+                depth: spec.depth,
+                flipX: flipIndexes.has(index),
+                tint: spec.tints?.[index % spec.tints.length],
+                tintMode: spec.tintMode,
+                blur: spec.blur
+            };
+        });
+    }
+
+    private getForestJitter (range: number, layerIndex: number, spriteIndex: number, salt: number)
+    {
+        return ((this.getForestRandom(layerIndex, spriteIndex, salt) * 2) - 1) * range;
+    }
+
+    private getForestRandom (layerIndex: number, spriteIndex: number, salt: number)
+    {
+        let value = FOREST_RANDOM_SEED;
+
+        value ^= Math.imul(layerIndex + 1, 0x9e3779b1);
+        value ^= Math.imul(spriteIndex + 1, 0x85ebca6b);
+        value ^= Math.imul(salt + 1, 0xc2b2ae35);
+        value ^= value >>> 16;
+        value = Math.imul(value, 0x7feb352d);
+        value ^= value >>> 15;
+        value = Math.imul(value, 0x846ca68b);
+        value ^= value >>> 16;
+
+        return (value >>> 0) / 0xffffffff;
+    }
+
+    private roundForestScale (scale: number)
+    {
+        return Math.round(scale * 1000) / 1000;
     }
 
     private createForestLayer (
@@ -481,6 +598,17 @@ export class Game extends Scene
             if (config.tint)
             {
                 image.setTint(config.tint);
+            }
+
+            if (config.tintMode !== undefined)
+            {
+                image.setTintMode(config.tintMode);
+            }
+
+            if (config.blur)
+            {
+                image.enableFilters();
+                image.filters?.internal.addBlur(0, 2, 2, 0.7, 0x061018, 3);
             }
 
             return { ...config, image };
@@ -510,7 +638,6 @@ export class Game extends Scene
     private applyParallax ()
     {
         this.vista.tilePositionX = this.worldOffset * 0.16;
-        this.farLayer.tilePositionX = this.worldOffset * 0.28;
         this.roadLayer.tilePositionX = this.worldOffset * 0.86;
         this.updateForestLayers();
     }
@@ -550,45 +677,28 @@ export class Game extends Scene
 
     private createParallaxTextures ()
     {
-        this.createTexture('far-mountains', 1024, 330, (graphics) => {
-            graphics.fillStyle(0x0d1722, 0.16);
-            graphics.fillRect(0, 220, 1024, 110);
-
-            graphics.fillStyle(0x6e8396, 0.25);
-            graphics.fillTriangle(-80, 245, 140, 68, 360, 245);
-            graphics.fillTriangle(220, 245, 430, 92, 680, 245);
-            graphics.fillTriangle(550, 248, 798, 62, 1090, 248);
-
-            graphics.fillStyle(0x2c3e50, 0.34);
-            graphics.fillTriangle(-40, 265, 210, 124, 470, 265);
-            graphics.fillTriangle(350, 266, 610, 118, 900, 266);
-            graphics.fillTriangle(720, 266, 920, 142, 1140, 266);
-        });
-
-        this.createTexture('road-strip', 1024, 220, (graphics) => {
+        this.createTexture('road-strip', 1024, 40, (graphics) => {
             graphics.fillStyle(0x111821, 0.96);
-            graphics.fillRect(0, 0, 1024, 220);
+            graphics.fillRect(0, 0, 1024, 40);
 
-            graphics.fillStyle(0x25313b, 0.92);
-            graphics.fillTriangle(0, 44, 1024, 14, 1024, 128);
-            graphics.fillTriangle(0, 86, 1024, 58, 1024, 176);
+            graphics.fillStyle(0x25313b, 0.78);
+            graphics.fillRect(0, 8, 1024, 16);
 
-            graphics.lineStyle(2, 0x596879, 0.35);
-            for (let x = -20; x < 1040; x += 82)
+            graphics.lineStyle(1, 0x596879, 0.32);
+            for (let x = -20; x < 1040; x += 86)
             {
-                graphics.lineBetween(x, 72, x + 64, 62);
-                graphics.lineBetween(x + 12, 128, x + 92, 112);
+                graphics.lineBetween(x, 18, x + 62, 14);
             }
 
             graphics.fillStyle(0x5c6972, 0.42);
-            for (let x = 18; x < 1024; x += 96)
+            for (let x = 18; x < 1024; x += 112)
             {
-                graphics.fillEllipse(x, 40 + ((x / 24) % 5) * 20, 22, 8);
-                graphics.fillEllipse(x + 44, 122 + ((x / 32) % 3) * 18, 30, 9);
+                graphics.fillEllipse(x, 14 + ((x / 28) % 2) * 8, 18, 5);
+                graphics.fillEllipse(x + 48, 24, 24, 5);
             }
 
             graphics.fillStyle(0x05090f, 0.42);
-            graphics.fillRect(0, 174, 1024, 46);
+            graphics.fillRect(0, 30, 1024, 10);
         });
     }
 

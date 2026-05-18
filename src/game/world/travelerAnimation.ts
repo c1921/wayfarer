@@ -1,25 +1,29 @@
 import type { GameObjects } from 'phaser';
 import {
-    TRAVELER_BOB_AMP_IDLE,
-    TRAVELER_BOB_AMP_TRAVEL,
-    TRAVELER_BOB_PERIOD_FAST,
-    TRAVELER_BOB_PERIOD_SLOW,
-    TRAVELER_ROT_AMP_IDLE,
-    TRAVELER_ROT_AMP_TRAVEL,
-    TRAVELER_ROT_PERIOD_FAST,
-    TRAVELER_ROT_PERIOD_SLOW,
-    TRAVELER_Y
+    TRAVELER_WALK_ANIMATION_KEY,
+    TRAVELER_WALK_IDLE_FRAME_KEY
 } from '../config';
 
-export const animateTraveler = (traveler: GameObjects.Image, time: number, isTraveling: boolean) => {
-    const step = isTraveling
-        ? Math.sin(time / TRAVELER_BOB_PERIOD_FAST)
-        : Math.sin(time / TRAVELER_BOB_PERIOD_SLOW);
+export const animateTraveler = (traveler: GameObjects.Sprite, isTraveling: boolean) => {
+    if (isTraveling)
+    {
+        if (!traveler.anims.isPlaying || traveler.anims.currentAnim?.key !== TRAVELER_WALK_ANIMATION_KEY)
+        {
+            traveler.play(TRAVELER_WALK_ANIMATION_KEY);
+        }
 
-    traveler.y = TRAVELER_Y + (isTraveling ? step * TRAVELER_BOB_AMP_TRAVEL : step * TRAVELER_BOB_AMP_IDLE);
-    traveler.rotation = isTraveling
-        ? Math.sin(time / TRAVELER_ROT_PERIOD_FAST) * TRAVELER_ROT_AMP_TRAVEL
-        : Math.sin(time / TRAVELER_ROT_PERIOD_SLOW) * TRAVELER_ROT_AMP_IDLE;
+        return;
+    }
+
+    if (traveler.anims.isPlaying)
+    {
+        traveler.stop();
+    }
+
+    if (traveler.texture.key !== TRAVELER_WALK_IDLE_FRAME_KEY)
+    {
+        traveler.setTexture(TRAVELER_WALK_IDLE_FRAME_KEY);
+    }
 };
 
 export const easeInOutSine = (progress: number) => {

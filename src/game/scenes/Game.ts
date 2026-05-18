@@ -58,7 +58,7 @@ export class Game extends Scene
         this.renderLocation('选择一块路牌，旅人会自己继续前行。');
     }
 
-    update (time: number, delta: number)
+    update (_time: number, delta: number)
     {
         if (this.isTraveling && this.pendingRoute)
         {
@@ -74,7 +74,7 @@ export class Game extends Scene
             }
         }
 
-        this.world.update(this.worldOffset, this.isTraveling, time);
+        this.world.update(this.worldOffset, this.isTraveling);
     }
 
     private resetJourney ()

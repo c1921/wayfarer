@@ -10,6 +10,7 @@ import {
     TRAVELER_SHADOW_WIDTH,
     TRAVELER_SHADOW_X,
     TRAVELER_SHADOW_Y,
+    TRAVELER_WALK_IDLE_FRAME_KEY,
     TRAVELER_X,
     TRAVELER_Y,
     VIGNETTE_ALPHA,
@@ -23,7 +24,7 @@ export class ParallaxWorld
 {
     private vista: GameObjects.TileSprite;
     private roadLayer: GameObjects.TileSprite;
-    private traveler: GameObjects.Image;
+    private traveler: GameObjects.Sprite;
     private forestLayers: StreamingForestLayer[] = [];
 
     constructor (scene: Scene, initialWorldOffset: number)
@@ -44,7 +45,7 @@ export class ParallaxWorld
 
         scene.add.ellipse(TRAVELER_SHADOW_X, TRAVELER_SHADOW_Y, TRAVELER_SHADOW_WIDTH, TRAVELER_SHADOW_HEIGHT, 0x020407, 0.46).setDepth(3.8);
 
-        this.traveler = scene.add.image(TRAVELER_X, TRAVELER_Y, 'traveler');
+        this.traveler = scene.add.sprite(TRAVELER_X, TRAVELER_Y, TRAVELER_WALK_IDLE_FRAME_KEY);
         this.traveler.setOrigin(0.5, 1);
         this.traveler.setScale(TRAVELER_SCALE);
         this.traveler.setDepth(5.5);
@@ -54,10 +55,10 @@ export class ParallaxWorld
         this.applyParallax(initialWorldOffset);
     }
 
-    update (worldOffset: number, isTraveling: boolean, time: number)
+    update (worldOffset: number, isTraveling: boolean)
     {
         this.applyParallax(worldOffset);
-        animateTraveler(this.traveler, time, isTraveling);
+        animateTraveler(this.traveler, isTraveling);
     }
 
     private applyParallax (worldOffset: number)
